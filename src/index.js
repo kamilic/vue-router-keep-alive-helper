@@ -41,12 +41,27 @@ export default function createHelper(config) {
   };
   const isPlaceHolderVm = (vm) => !!vm.__placeholder;
   const destroyVm = (vm) => {
-    if (vm instanceof Vue) {
+    if (vm instanceof Vue && typeof vm.$keepAliveDestroy === "function") {
       vm.$keepAliveDestroy();
     }
   };
 
-  router.afterEach((to, from) => {
+  /**
+   * NOTICE: Because we did some dirty hacks on internal vue-router / vue to implement these features。
+   * We are not recommended user to use `beforeRouteUpdate()` navigation guards, it will causes some unexpected problems.
+   * @param {Vue} vm 
+   */
+  const warningBeforeRouteUpdate = (vm) => {
+    if (
+      !isPlaceHolderVm(vm) &&
+      vm.$options &&
+      vm.$options.beforeRouteUpdate.length > 0
+    ) {
+      throw new Error("We are not recommend to use beforeRouteUpdate navigation guards on component option, please use activated / deactivated instead.");
+    }
+  };
+
+  router.afterEach(() => {
     historyShouldChange = true;
     // get the vm instance after render
     Vue.nextTick(() => {
@@ -66,6 +81,7 @@ export default function createHelper(config) {
       pre = current;
       preStateId = stackPointer();
       if (!isPlaceHolderVm(pendingToPushVm)) {
+        warningBeforeRouteUpdate(pendingToPushVm);
         setCurrentVnodeKey();
         if (!hacked && current) {
           hackKeepAliveRender(current.$vnode.parent.componentInstance);
