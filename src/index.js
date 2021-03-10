@@ -40,6 +40,11 @@ export default function createHelper(config) {
     return !currentVm?.$vnode.data.keepAlive ? PLACEHOLDER_VM : currentVm;
   };
   const isPlaceHolderVm = (vm) => !!vm.__placeholder;
+  const destroyVm = (vm) => {
+    if (vm instanceof Vue) {
+      vm.$keepAliveDestroy();
+    }
+  };
 
   router.afterEach((to, from) => {
     historyShouldChange = true;
@@ -86,14 +91,14 @@ export default function createHelper(config) {
     pushStack(vm);
   };
   const backCb = function () {
-    (historyStackMap.pop() || []).forEach((vm) => vm && vm.$keepAliveDestroy());
+    (historyStackMap.pop() || []).forEach((vm) => destroyVm(vm));
     decreaseStackPointer();
   };
   const replaceCb = function (vm) {
     if (
       !(isDef(replacePrePath) && replaceStay.indexOf(replacePrePath) !== -1)
     ) {
-      pre.$keepAliveDestroy();
+      destroyVm(pre);
     }
     setState(stackPointer());
     pushStack(vm);
